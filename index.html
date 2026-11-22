@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Kartik Gupta — IIT Delhi · Co-Founder, Gatician</title>
     <meta name="description" content="Kartik Gupta's interactive 3D portfolio — IIT Delhi, co-founder of Gatician. Drive around the island to explore." />
     <meta property="og:type" content="website" />
@@ -44,6 +44,7 @@
           <span><kbd>R</kbd> reset car</span>
           <span><kbd>M</kbd> music</span>
         </div>
+        <p class="touch-hint">🕹️ Drag the joystick to drive — the car goes where you point</p>
         <button id="intro-resume" class="link-btn">Prefer a classic résumé? View it here</button>
       </div>
     </div>
@@ -51,17 +52,19 @@
     <!-- HUD -->
     <div id="hud" class="hidden">
       <div class="hud-name"><strong id="hud-name"></strong><span id="hud-title"></span></div>
-      <div class="hud-actions">
-        <button id="music-btn" class="btn small icon" title="Music on / off (M)" aria-label="Turn music on or off">🎵</button>
-        <button class="btn small icon" data-theme-toggle title="Switch light / dark" aria-label="Switch light or dark theme"></button>
-        <button id="resume-btn" class="btn small">Résumé</button>
-        <button id="reset-btn" class="btn small" title="Reset car (R)">↺</button>
+      <button id="menu-btn" class="btn small icon" aria-label="Open menu" aria-expanded="false">⋯</button>
+      <div class="hud-actions" id="hud-actions">
+        <button id="music-btn" class="btn small icon" title="Music on / off (M)" aria-label="Turn music on or off"><span class="i">🎵</span><span class="lbl">Music</span></button>
+        <button class="btn small icon" data-theme-toggle title="Switch theme" aria-label="Switch theme"><span class="i"></span><span class="lbl">Theme</span></button>
+        <button id="resume-btn" class="btn small"><span class="i only-menu">📄</span><span>Résumé</span></button>
+        <button id="reset-btn" class="btn small icon" title="Reset car (R)"><span class="i">↺</span><span class="lbl">Reset car</span></button>
       </div>
       <div id="zone-hint" class="zone-hint"></div>
     </div>
 
     <!-- Zone panel -->
     <aside id="panel" class="panel" aria-live="polite">
+      <div class="sheet-handle" aria-hidden="true"><span></span></div>
       <button class="panel-close" aria-label="Close">×</button>
       <div class="panel-body"></div>
     </aside>
@@ -76,15 +79,11 @@
 
     <!-- Touch controls -->
     <div id="touch" class="hidden">
-      <div class="touch-left">
-        <button data-key="left">◀</button>
-        <button data-key="right">▶</button>
+      <div id="joystick" aria-label="Drag to drive">
+        <div class="joy-ring"></div>
+        <div class="joy-knob"></div>
       </div>
-      <div class="touch-right">
-        <button data-key="boost" class="small">⚡</button>
-        <button data-key="back">▼</button>
-        <button data-key="forward">▲</button>
-      </div>
+      <button id="boost-btn" aria-label="Boost">⚡<span>Boost</span></button>
     </div>
 
     <script type="module" src="/src/main.js"></script>

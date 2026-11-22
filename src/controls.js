@@ -35,27 +35,72 @@ export class Controls {
   }
 
   setupTouch() {
+    // Joystick: x/y in -1..1 (screen space, y down). main.js turns it into "drive towards that direction".
+    this.joy = { x: 0, y: 0, active: false }
     const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+    if (isTouch) document.documentElement.classList.add('touch')
     const pad = document.getElementById('touch')
     if (!isTouch) return
     this.touchPad = pad
-    for (const btn of pad.querySelectorAll('button')) {
-      const key = btn.dataset.key
-      const on = (e) => {
-        e.preventDefault()
-        this.state[key] = true
-        btn.classList.add('active')
+
+    const stick = document.getElementById('joystick')
+    const knob = stick.querySelector('.joy-knob')
+    let pointerId = null
+    const RADIUS = 52
+    const move = (e) => {
+      const r = stick.getBoundingClientRect()
+      let dx = e.clientX - (r.left + r.width / 2)
+      let dy = e.clientY - (r.top + r.height / 2)
+      const len = Math.hypot(dx, dy)
+      if (len > RADIUS) {
+        dx = (dx / len) * RADIUS
+        dy = (dy / len) * RADIUS
       }
-      const off = (e) => {
-        e.preventDefault()
-        this.state[key] = false
-        btn.classList.remove('active')
-      }
-      btn.addEventListener('pointerdown', on)
-      btn.addEventListener('pointerup', off)
-      btn.addEventListener('pointercancel', off)
-      btn.addEventListener('pointerleave', off)
+      knob.style.transform = `translate(${dx}px, ${dy}px)`
+      // small dead zone so a resting thumb doesn't creep
+      const m = Math.min(len / RADIUS, 1)
+      this.joy.active = m > 0.15
+      this.joy.x = this.joy.active ? dx / RADIUS : 0
+      this.joy.y = this.joy.active ? dy / RADIUS : 0
     }
+    const release = (e) => {
+      if (e.pointerId !== pointerId) return
+      pointerId = null
+      this.joy.active = false
+      this.joy.x = this.joy.y = 0
+      knob.style.transform = ''
+      stick.classList.remove('active')
+    }
+    stick.addEventListener('pointerdown', (e) => {
+      e.preventDefault()
+      pointerId = e.pointerId
+      try { stick.setPointerCapture(e.pointerId) } catch (err) { /* not capturable: still works while the finger stays on the stick */ }
+      stick.classList.add('active')
+      move(e)
+    })
+    stick.addEventListener('pointermove', (e) => e.pointerId === pointerId && move(e))
+    stick.addEventListener('pointerup', release)
+    stick.addEventListener('pointercancel', release)
+
+    const boost = document.getElementById('boost-btn')
+    const on = (e) => {
+      e.preventDefault()
+      this.state.boost = true
+      boost.classList.add('active')
+    }
+    const off = () => {
+      this.state.boost = false
+      boost.classList.remove('active')
+    }
+    boost.addEventListener('pointerdown', on)
+    boost.addEventListener('pointerup', off)
+    boost.addEventListener('pointercancel', off)
+    boost.addEventListener('pointerleave', off)
+  }
+
+  /** Hide the joystick while the info sheet is open on phones (it covers the bottom of the screen). */
+  setTouchVisible(visible) {
+    this.touchPad?.classList.toggle('sheet-open', !visible)
   }
 
   showTouch() {

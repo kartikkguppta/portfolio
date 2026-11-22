@@ -157,17 +157,25 @@ export class Car {
     let engine = 0
     let brake = 0
 
-    if (input.forward) engine = maxEngine
-    if (input.back) {
-      // brake first if rolling forward, then reverse
-      if (speed > 1) brake = 3
-      else engine = -maxEngine * 0.6
+    let steerTarget
+    if (input.analog) {
+      // joystick: throttle 0..1 and steer -1..1 worked out in main.js
+      engine = maxEngine * input.throttle
+      brake = input.throttle > 0.05 ? 0 : 0.6
+      steerTarget = input.steer
+    } else {
+      if (input.forward) engine = maxEngine
+      if (input.back) {
+        // brake first if rolling forward, then reverse
+        if (speed > 1) brake = 3
+        else engine = -maxEngine * 0.6
+      }
+      if (input.brake) brake = 4
+      if (!input.forward && !input.back && !input.brake) brake = 0.4 // gentle roll-to-stop
+      steerTarget = (input.left ? 1 : 0) - (input.right ? 1 : 0)
     }
-    if (input.brake) brake = 4
-    if (!input.forward && !input.back && !input.brake) brake = 0.4 // gentle roll-to-stop
 
     // Less steering at high speed so it doesn't spin out
-    const steerTarget = (input.left ? 1 : 0) - (input.right ? 1 : 0)
     const maxSteer = THREE.MathUtils.lerp(0.6, 0.28, Math.min(Math.abs(speed) / 25, 1))
     this.steer = THREE.MathUtils.damp(this.steer, steerTarget * maxSteer, 12, dt)
 

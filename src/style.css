@@ -204,22 +204,90 @@ kbd {
 .resume-body h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
 .resume-body h2 { font-size: 21px; }
 
-/* Touch */
-#touch { position: fixed; left: 0; right: 0; bottom: 20px; z-index: 12; display: flex; justify-content: space-between; padding: 0 16px; pointer-events: none; }
-#touch > div { display: flex; gap: 12px; align-items: flex-end; pointer-events: auto; }
-#touch button {
-  width: 68px; height: 68px; border-radius: 50%; border: none;
-  background: var(--glass); box-shadow: var(--shadow);
-  font-size: 24px; color: var(--ink); touch-action: none; user-select: none;
+/* Menu labels: only shown inside the phone menu */
+.lbl, .only-menu { display: none; }
+#menu-btn { display: none; }
+
+/* Touch controls: joystick (left) + boost (right) */
+.touch-hint { display: none; }
+html.touch .keys { display: none; }
+html.touch .touch-hint { display: block; font-size: 14px; color: var(--muted); margin: 16px 0 0; }
+
+#touch { position: fixed; inset: auto 0 0 0; height: 0; z-index: 12; pointer-events: none; }
+#joystick {
+  position: fixed; left: 22px; bottom: calc(26px + env(safe-area-inset-bottom));
+  width: 136px; height: 136px; pointer-events: auto; touch-action: none; user-select: none;
+  transition: opacity 0.25s;
 }
-#touch button.small { width: 52px; height: 52px; font-size: 20px; }
-#touch button.active { background: var(--accent); color: #fff; }
+.joy-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--glass); box-shadow: var(--shadow);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+}
+.joy-ring::after { /* faint direction marks */
+  content: ''; position: absolute; inset: 22px; border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+}
+.joy-knob {
+  position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px 0 0 -30px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s ease-out;
+}
+#joystick.active .joy-knob { transition: none; }
+#boost-btn {
+  position: fixed; right: 22px; bottom: calc(40px + env(safe-area-inset-bottom));
+  width: 84px; height: 84px; border-radius: 50%; border: none;
+  background: var(--glass); color: var(--ink); box-shadow: var(--shadow);
+  font: inherit; font-size: 28px; line-height: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  pointer-events: auto; touch-action: none; user-select: none; transition: opacity 0.25s, background 0.15s;
+}
+#boost-btn span { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; }
+#boost-btn.active { background: var(--accent); color: #fff; }
+#touch.sheet-open #joystick, #touch.sheet-open #boost-btn { opacity: 0; pointer-events: none; }
+
+.sheet-handle { display: none; }
 
 @media (max-width: 640px) {
   .intro-card { padding: 30px 20px 24px; }
   .intro-card h1 { font-size: 32px; }
   .keys { display: none; }
-  .panel { top: auto; height: 55vh; transform: translateY(calc(100% + 40px)); }
-  .panel.open { transform: translateY(0); }
-  .zone-hint { bottom: 110px; }
+  .zone-hint { bottom: 190px; }
+
+  /* Top bar: name card + one menu button */
+  .hud-name { top: 12px; left: 12px; padding: 8px 12px; max-width: calc(100vw - 84px); }
+  .hud-name strong { font-size: 15px; }
+  .hud-name span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #menu-btn { display: block; position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; font-size: 22px; line-height: 44px; pointer-events: auto; }
+  .hud-actions {
+    display: none; top: 64px; right: 12px; min-width: 180px;
+    flex-direction: column; align-items: stretch; gap: 2px;
+    background: var(--paper); padding: 8px; border-radius: 16px; box-shadow: var(--shadow);
+  }
+  .hud-actions.open { display: flex; }
+  .hud-actions .btn {
+    width: auto; height: auto; padding: 11px 12px; line-height: 1.2; font-size: 15px;
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    background: transparent; box-shadow: none; border-radius: 10px;
+  }
+  .hud-actions .btn:active { background: var(--paper-2); transform: none; }
+  .hud-actions .btn .i { width: 22px; text-align: center; }
+  .hud-actions .lbl, .hud-actions .only-menu { display: inline; }
+  #music-btn.off { text-decoration: none; }
+
+  /* Zone info: bottom sheet — opens half-way, drag up for full, drag down to close */
+  .panel {
+    top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 88vh;
+    border-radius: 22px 22px 0 0; padding: 30px 20px calc(24px + env(safe-area-inset-bottom));
+    transform: translateY(100%);
+  }
+  .panel.open { transform: translateY(40vh); }
+  .panel.open.full { transform: translateY(0); }
+  .sheet-handle {
+    display: flex; justify-content: center; align-items: flex-start;
+    position: absolute; top: 0; left: 0; right: 60px; height: 34px; padding-top: 10px;
+    touch-action: none; cursor: grab;
+  }
+  .sheet-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
+  .panel h2 { font-size: 23px; }
 }

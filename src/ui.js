@@ -93,6 +93,74 @@ export class UI {
     this.resume.addEventListener('click', (e) => e.target === this.resume && this.toggleResume(false))
     document.getElementById('resume-btn').addEventListener('click', () => this.toggleResume(true))
     document.getElementById('intro-resume').addEventListener('click', () => this.toggleResume(true))
+
+    this.onPanelChange = null
+    this.setupMenu()
+    this.setupSheet()
+  }
+
+  /** Phones: the top-right buttons live in a "⋯" menu. */
+  setupMenu() {
+    const btn = document.getElementById('menu-btn')
+    const menu = document.getElementById('hud-actions')
+    const setOpen = (open) => {
+      menu.classList.toggle('open', open)
+      btn.setAttribute('aria-expanded', String(open))
+      btn.textContent = open ? '×' : '⋯'
+    }
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      setOpen(!menu.classList.contains('open'))
+    })
+    // Résumé and Reset close the menu; Music and Theme keep it open so you can see the change
+    for (const id of ['resume-btn', 'reset-btn']) document.getElementById(id).addEventListener('click', () => setOpen(false))
+    document.addEventListener('pointerdown', (e) => {
+      if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== btn) setOpen(false)
+    })
+  }
+
+  /** Phones: the zone panel is a bottom sheet. Drag the handle up for full view, down to close. */
+  setupSheet() {
+    const mq = matchMedia('(max-width: 640px)')
+    const panel = this.panel
+    const handle = panel.querySelector('.sheet-handle')
+    let startY = 0
+    let base = 0
+    let dragging = false
+    let moved = false
+    handle.addEventListener('pointerdown', (e) => {
+      if (!mq.matches) return
+      dragging = true
+      moved = false
+      startY = e.clientY
+      base = panel.classList.contains('full') ? 0 : window.innerHeight * 0.4
+      try { handle.setPointerCapture(e.pointerId) } catch (err) { /* ignore */ }
+      panel.style.transition = 'none'
+    })
+    handle.addEventListener('pointermove', (e) => {
+      if (!dragging) return
+      if (Math.abs(e.clientY - startY) > 6) moved = true
+      panel.style.transform = `translateY(${Math.max(0, base + e.clientY - startY)}px)`
+    })
+    const end = (e) => {
+      if (!dragging) return
+      dragging = false
+      panel.style.transition = ''
+      panel.style.transform = ''
+      const dy = e.clientY - startY
+      const full = panel.classList.contains('full')
+      if (!moved) panel.classList.toggle('full') // a tap on the handle toggles half / full
+      else if (dy < -40) panel.classList.add('full')
+      else if (dy > 50) {
+        if (full && base + dy < window.innerHeight * 0.55) panel.classList.remove('full')
+        else {
+          this.dismissed = this.currentZone
+          this.closePanel()
+        }
+      }
+    }
+    handle.addEventListener('pointerup', end)
+    handle.addEventListener('pointercancel', end)
   }
 
   toggleResume(show) {
@@ -111,11 +179,14 @@ export class UI {
     if (this.dismissed === zone) return
     this.panelBody.innerHTML = zoneHtml(zone.data, this.profile)
     this.panel.scrollTop = 0
+    this.panel.classList.remove('full')
     this.panel.classList.add('open')
+    this.onPanelChange?.(true)
   }
 
   closePanel() {
-    this.panel.classList.remove('open')
+    this.panel.classList.remove('open', 'full')
+    this.onPanelChange?.(false)
   }
 
   setHint(text) {

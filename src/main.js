@@ -63,7 +63,10 @@ function updateToggleIcons() {
   const current = document.documentElement.dataset.theme
   const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length]
   for (const b of document.querySelectorAll('[data-theme-toggle]')) {
-    b.textContent = THEME_ICONS[current]
+    const icon = b.querySelector('.i') || b
+    icon.textContent = THEME_ICONS[current]
+    const label = b.querySelector('.lbl')
+    if (label) label.textContent = `Theme: ${THEME_LABELS[current]}`
     b.title = `Theme: ${THEME_LABELS[current]} — click for ${THEME_LABELS[next]}`
   }
 }
@@ -116,6 +119,7 @@ async function boot() {
   const car = new Car(scene, physics)
   sceneTheme.attach(world, car)
   const controls = new Controls()
+  ui.onPanelChange = (open) => controls.setTouchVisible(!open)
 
   // Background music: starts with "Start driving", toggled with the 🎵 button or M
   const music = new Music()
@@ -123,6 +127,8 @@ async function boot() {
   const syncMusicBtn = (on) => {
     musicBtn.classList.toggle('off', !on)
     musicBtn.title = on ? 'Music on — click to mute (M)' : 'Music off — click to play (M)'
+    musicBtn.querySelector('.i').textContent = on ? '🎵' : '🔇'
+    musicBtn.querySelector('.lbl').textContent = on ? 'Music: on' : 'Music: off'
   }
   syncMusicBtn(music.enabled)
   music.onChange(syncMusicBtn)
@@ -165,11 +171,38 @@ async function boot() {
   const clock = new THREE.Clock()
   const tmp = new THREE.Vector3()
 
+  // Joystick → "drive towards where the thumb points" (relative to the screen, not the car)
+  const camRight = new THREE.Vector3()
+  const camFwd = new THREE.Vector3()
+  const desired = new THREE.Vector3()
+  const carFwd = new THREE.Vector3()
+  const carQ = new THREE.Quaternion()
+  const joyInput = { analog: true, throttle: 0, steer: 0, boost: false }
+  function driveInput() {
+    if (!started) return noInput
+    const j = controls.joy
+    if (!j?.active) return controls.state
+    camRight.set(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize()
+    camFwd.set(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize()
+    desired.copy(camRight).multiplyScalar(j.x).addScaledVector(camFwd, -j.y)
+    const mag = Math.min(desired.length(), 1)
+    desired.normalize()
+    const r = car.body.rotation()
+    carFwd.set(1, 0, 0).applyQuaternion(carQ.set(r.x, r.y, r.z, r.w)).setY(0).normalize()
+    // signed angle from the car's nose to the joystick direction (+ = turn left)
+    const angle = Math.atan2(carFwd.z * desired.x - carFwd.x * desired.z, carFwd.dot(desired))
+    joyInput.steer = THREE.MathUtils.clamp(angle * 1.8, -1, 1)
+    joyInput.throttle = mag * (Math.abs(angle) > 1.4 ? 0.55 : 1) // ease off while turning around
+    joyInput.boost = controls.state.boost
+    return joyInput
+  }
+
   function frame() {
     const dt = Math.min(clock.getDelta(), 0.1)
     const t = clock.elapsedTime
 
-    physics.update(dt, (step) => car.control(started ? controls.state : noInput, step))
+    const input = driveInput()
+    physics.update(dt, (step) => car.control(input, step))
     car.update(dt, t)
     world.update(t, dt)
     music.setSpeed(car.speed)
