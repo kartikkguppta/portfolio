@@ -32,6 +32,33 @@ function save(value) {
   }
 }
 
+// One second of silence as a WAV file, made in memory (used to keep iPhone audio in "media" mode)
+let silentUrl = null
+function silentWavUrl() {
+  if (silentUrl) return silentUrl
+  const rate = 8000
+  const samples = rate
+  const buf = new ArrayBuffer(44 + samples)
+  const v = new DataView(buf)
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
+  str(0, 'RIFF')
+  v.setUint32(4, 36 + samples, true)
+  str(8, 'WAVE')
+  str(12, 'fmt ')
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true) // PCM
+  v.setUint16(22, 1, true) // mono
+  v.setUint32(24, rate, true)
+  v.setUint32(28, rate, true)
+  v.setUint16(32, 1, true)
+  v.setUint16(34, 8, true) // 8-bit
+  str(36, 'data')
+  v.setUint32(40, samples, true)
+  for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128) // 8-bit silence is 128
+  silentUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+  return silentUrl
+}
+
 export class Music {
   constructor() {
     this.enabled = readSaved() !== 'off'
@@ -40,9 +67,18 @@ export class Music {
     this.listeners = []
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return
-      if (document.hidden) this.ctx.suspend()
-      else if (this.enabled) this.ctx.resume()
+      if (document.hidden) {
+        this.ctx.suspend()
+        this.keepAlive?.pause()
+      } else if (this.enabled && this.started) this.resume()
     })
+
+    // Phones are strict: audio may only start inside a touch. If the music isn't running yet
+    // (or the phone paused it, e.g. after a call), any tap on the page starts it again.
+    const retry = () => {
+      if (this.enabled && this.started && (!this.ctx || this.ctx.state !== 'running')) this.play()
+    }
+    for (const type of ['pointerdown', 'touchend', 'click', 'keydown']) window.addEventListener(type, retry, { capture: true, passive: true })
   }
 
   onChange(fn) {
@@ -58,17 +94,26 @@ export class Music {
   toggle() {
     this.enabled = !this.enabled
     save(this.enabled ? 'on' : 'off')
-    if (this.enabled) this.play()
-    else this.pause()
+    if (this.enabled) {
+      this.started = true
+      this.play()
+    } else this.pause()
     for (const fn of this.listeners) fn(this.enabled)
   }
 
   play() {
+    this.unlockPhoneAudio()
     if (!this.ctx) this.setup()
+    this.resume()
     const ctx = this.ctx
-    ctx.resume()
     this.master.gain.cancelScheduledValues(ctx.currentTime)
     this.master.gain.setTargetAtTime(0.55, ctx.currentTime, 1.2) // gentle fade-in
+  }
+
+  resume() {
+    const p = this.ctx.resume()
+    p?.catch?.(() => {}) // blocked until the next tap; `retry` handles that
+    this.keepAlive?.play().catch(() => {})
   }
 
   pause() {
@@ -76,7 +121,30 @@ export class Music {
     const ctx = this.ctx
     this.master.gain.cancelScheduledValues(ctx.currentTime)
     this.master.gain.setTargetAtTime(0, ctx.currentTime, 0.3)
+    this.keepAlive?.pause()
     setTimeout(() => !this.enabled && ctx.suspend(), 1200)
+  }
+
+  /**
+   * iPhones treat Web Audio as "ambient" sound, which the silent switch mutes.
+   * Asking for "playback" (newer iOS) and keeping a silent <audio> element playing (older iOS)
+   * makes the music behave like normal media. Harmless on Android and laptops.
+   */
+  unlockPhoneAudio() {
+    try {
+      if (navigator.audioSession) navigator.audioSession.type = 'playback'
+    } catch (e) {
+      /* not supported */
+    }
+    if (!this.keepAlive) {
+      const a = document.createElement('audio')
+      a.src = silentWavUrl()
+      a.loop = true
+      a.setAttribute('playsinline', '')
+      a.preload = 'auto'
+      this.keepAlive = a
+    }
+    this.keepAlive.play().catch(() => {})
   }
 
   /** Speed in m/s; brightens the mix a little while driving. */

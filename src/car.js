@@ -161,7 +161,7 @@ export class Car {
     if (input.analog) {
       // joystick: throttle 0..1 and steer -1..1 worked out in main.js
       engine = maxEngine * input.throttle
-      brake = input.throttle > 0.05 ? 0 : 0.6
+      brake = Math.abs(input.throttle) > 0.05 ? 0 : 0.6
       steerTarget = input.steer
     } else {
       if (input.forward) engine = maxEngine

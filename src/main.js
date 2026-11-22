@@ -181,7 +181,10 @@ async function boot() {
   function driveInput() {
     if (!started) return noInput
     const j = controls.joy
-    if (!j?.active) return controls.state
+    if (!j?.active) {
+      reversing = false
+      return controls.state
+    }
     camRight.set(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize()
     camFwd.set(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize()
     desired.copy(camRight).multiplyScalar(j.x).addScaledVector(camFwd, -j.y)
@@ -191,11 +194,25 @@ async function boot() {
     carFwd.set(1, 0, 0).applyQuaternion(carQ.set(r.x, r.y, r.z, r.w)).setY(0).normalize()
     // signed angle from the car's nose to the joystick direction (+ = turn left)
     const angle = Math.atan2(carFwd.z * desired.x - carFwd.x * desired.z, carFwd.dot(desired))
-    joyInput.steer = THREE.MathUtils.clamp(angle * 1.8, -1, 1)
-    joyInput.throttle = mag * (Math.abs(angle) > 1.4 ? 0.55 : 1) // ease off while turning around
+
+    // Pointing behind the car = reverse (e.g. backing away from a rock). A little hysteresis
+    // stops it flicking between forward and reverse when the thumb is near the boundary.
+    if (!reversing && Math.abs(angle) > 2.2) reversing = true
+    else if (reversing && Math.abs(angle) < 1.7) reversing = false
+
+    if (reversing) {
+      // steer so the car's tail swings towards the thumb; going backwards flips the steering
+      const tailAngle = angle > 0 ? angle - Math.PI : angle + Math.PI
+      joyInput.steer = THREE.MathUtils.clamp(-tailAngle * 1.8, -1, 1)
+      joyInput.throttle = -mag * 0.75
+    } else {
+      joyInput.steer = THREE.MathUtils.clamp(angle * 1.8, -1, 1)
+      joyInput.throttle = mag * (Math.abs(angle) > 1.4 ? 0.55 : 1) // ease off while turning hard
+    }
     joyInput.boost = controls.state.boost
     return joyInput
   }
+  let reversing = false
 
   function frame() {
     const dt = Math.min(clock.getDelta(), 0.1)

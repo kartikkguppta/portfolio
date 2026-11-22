@@ -208,14 +208,14 @@ kbd {
 .lbl, .only-menu { display: none; }
 #menu-btn { display: none; }
 
-/* Touch controls: joystick (left) + boost (right) */
+/* Touch controls: joystick (right thumb) + boost (left thumb) */
 .touch-hint { display: none; }
 html.touch .keys { display: none; }
 html.touch .touch-hint { display: block; font-size: 14px; color: var(--muted); margin: 16px 0 0; }
 
 #touch { position: fixed; inset: auto 0 0 0; height: 0; z-index: 12; pointer-events: none; }
 #joystick {
-  position: fixed; left: 22px; bottom: calc(26px + env(safe-area-inset-bottom));
+  position: fixed; right: 22px; bottom: calc(26px + env(safe-area-inset-bottom)); /* right thumb */
   width: 136px; height: 136px; pointer-events: auto; touch-action: none; user-select: none;
   transition: opacity 0.25s;
 }
@@ -235,7 +235,7 @@ html.touch .touch-hint { display: block; font-size: 14px; color: var(--muted); m
 }
 #joystick.active .joy-knob { transition: none; }
 #boost-btn {
-  position: fixed; right: 22px; bottom: calc(40px + env(safe-area-inset-bottom));
+  position: fixed; left: 22px; bottom: calc(40px + env(safe-area-inset-bottom)); /* left thumb */
   width: 84px; height: 84px; border-radius: 50%; border: none;
   background: var(--glass); color: var(--ink); box-shadow: var(--shadow);
   font: inherit; font-size: 28px; line-height: 1;
