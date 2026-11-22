@@ -104,6 +104,15 @@ export class Car {
     body.add(this.headlight, this.headlight.target)
     this.headlightMat = lightMat
 
+    // neon underglow (Sunset and Night themes)
+    this.underglowMat = new THREE.MeshBasicMaterial({ color: '#ff3d9a', transparent: true, opacity: 0 })
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.04, 1.0), this.underglowMat)
+    strip.position.y = -0.17
+    body.add(strip)
+    this.underglow = new THREE.PointLight('#ff3d9a', 0, 5, 1.6)
+    this.underglow.position.set(0, -0.35, 0)
+    body.add(this.underglow)
+
     // little antenna with a ball, for charm
     const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4), dark)
     antenna.position.set(-0.65, 1.15, 0.4)
@@ -190,6 +199,12 @@ export class Car {
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true)
     this.flippedTime = 0
+  }
+
+  setUnderglow(amount) {
+    this.underglow.intensity = amount * 9
+    this.underglowMat.opacity = Math.min(amount, 1)
+    this.underglowMat.color.set('#ff3d9a').multiplyScalar(1 + amount * 2)
   }
 
   reset() {

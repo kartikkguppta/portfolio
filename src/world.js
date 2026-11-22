@@ -64,7 +64,7 @@ export function textTexture(lines, { width = 512, height = 256, bg = palette.cre
   const total = sizes.reduce((a, b) => a + b * 1.25, 0)
   let y = height / 2 - total / 2
   for (const l of lines) {
-    ctx.font = `${l.weight || 600} ${l.size}px ${font}, system-ui, sans-serif`
+    ctx.font = `${l.weight || 600} ${l.size}px ${font}, system-ui, 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`
     y += (l.size * 1.25) / 2
     ctx.fillText(l.text, width / 2, y)
     y += (l.size * 1.25) / 2
@@ -347,6 +347,37 @@ export function buildWorld(scene, physics, profile, zones) {
   tufts.receiveShadow = true
   scene.add(tufts, flowers)
 
+  // materials that shift colour in the Sunset theme: [material, normal colour, sunset colour]
+  const tinted = [
+    [grass.material, new THREE.Color(palette.grass), new THREE.Color('#4fd48f')],
+    [patchMat, new THREE.Color(palette.grassDark), new THREE.Color('#35b377')],
+    [tufts.material, new THREE.Color(palette.grassDark), new THREE.Color('#35b377')],
+    [sand.material, new THREE.Color(palette.sand), new THREE.Color('#ffd7b0')],
+  ]
+
+  // ── Palm trees along the shore ─────────────────────────
+  for (let i = 0, tries = 0; i < 20 && tries < 300; tries++) {
+    const a = rand() * Math.PI * 2
+    const r = 33 + rand() * 4.5
+    const x = Math.cos(a) * r
+    const z = Math.sin(a) * r
+    if (blocked(x, z, 1.2)) continue
+    blockers.push([x, z, 2])
+    i++
+    const palm = buildPalm(rand)
+    palm.position.set(x, 0, z)
+    palm.rotation.y = -a + (rand() - 0.5) * 0.8 // lean out towards the sea
+    palm.scale.setScalar(0.85 + rand() * 0.4)
+    scene.add(palm)
+    physics.addStatic(RAPIER.ColliderDesc.cylinder(1.5, 0.3), [x, 1.5, z])
+    const phase = rand() * 10
+    const crown = palm.userData.crown
+    animated.push((t) => {
+      crown.rotation.z = Math.sin(t * 0.9 + phase) * 0.05
+      crown.rotation.x = Math.cos(t * 0.7 + phase) * 0.04
+    })
+  }
+
   // ── Clouds ─────────────────────────────────────────────
   const cloudMat = mat('#ffffff', { roughness: 1 })
   const cloudGeo = new THREE.IcosahedronGeometry(1, 0)
@@ -375,10 +406,62 @@ export function buildWorld(scene, physics, profile, zones) {
     zones: zoneObjects,
     water: water.material,
     foam: foam.material,
+    /** 0 = no neon glow, 1 = full sunset-neon glow */
+    setNeon(amount) {
+      for (const z of zoneObjects) z.setNeon(amount)
+    },
+    /** 0 = normal colours, 1 = lush tropical colours that stay green under the orange sunset light */
+    setTint(amount) {
+      for (const [m, from, to] of tinted) m.color.copy(from).lerp(to, amount)
+    },
     update(t, dt) {
       for (const fn of animated) fn(t, dt)
     },
   }
+}
+
+function buildPalm(rand) {
+  const palm = new THREE.Group()
+  const trunkMat = mat('#a87a52')
+  const ringMat = mat('#8d6342')
+  const segGeo = new THREE.CylinderGeometry(0.17, 0.22, 0.75, 6)
+  // curved trunk: each segment tilts a little more than the last
+  let y = 0
+  let x = 0
+  let tilt = 0
+  const bend = 0.06 + rand() * 0.06
+  for (let i = 0; i < 6; i++) {
+    const seg = new THREE.Mesh(segGeo, i % 2 ? ringMat : trunkMat)
+    seg.position.set(x, y + 0.37, 0)
+    seg.rotation.z = -tilt
+    palm.add(seg)
+    y += Math.cos(tilt) * 0.72
+    x += Math.sin(tilt) * 0.72
+    tilt += bend
+  }
+  const crown = new THREE.Group()
+  crown.position.set(x, y, 0)
+  const leafGeo = new THREE.ConeGeometry(0.42, 2.8, 4)
+  leafGeo.translate(0, 1.4, 0) // pivot at the base
+  const leafMats = [mat('#3f9e4a'), mat('#4fb556'), mat('#358a41')]
+  const leaves = 7 + Math.floor(rand() * 2)
+  for (let i = 0; i < leaves; i++) {
+    const leaf = new THREE.Mesh(leafGeo, leafMats[i % 3])
+    leaf.scale.set(1, 1, 0.22)
+    leaf.rotation.order = 'YXZ'
+    leaf.rotation.y = (i / leaves) * Math.PI * 2 + rand() * 0.3
+    leaf.rotation.x = 1.35 + rand() * 0.35 // droop outwards
+    crown.add(leaf)
+  }
+  const nutMat = mat('#6b4a2e')
+  for (let i = 0; i < 3; i++) {
+    const nut = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), nutMat)
+    nut.position.set(Math.cos(i * 2.1) * 0.22, -0.15, Math.sin(i * 2.1) * 0.22)
+    crown.add(nut)
+  }
+  palm.add(crown)
+  palm.userData.crown = crown
+  return shadowed(palm)
 }
 
 function buildZone(scene, physics, zone, animated) {
@@ -419,6 +502,20 @@ function buildZone(scene, physics, zone, animated) {
   face.position.set(0, 2.6, 0.11)
   sign.add(post1, post2, board, face)
   shadowed(sign)
+
+  // Neon tube around the board (only lit in the Sunset and Night themes)
+  const neonMat = new THREE.MeshStandardMaterial({ color: '#2a2030', emissive: color, emissiveIntensity: 0, roughness: 0.4 })
+  const tube = 0.13
+  for (const [w, h, px, py] of [
+    [4.8, tube, 0, 3.66],
+    [4.8, tube, 0, 1.54],
+    [tube, 2.2, -2.4, 2.6],
+    [tube, 2.2, 2.4, 2.6],
+  ]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, tube), neonMat)
+    bar.position.set(px, py, 0.16)
+    sign.add(bar)
+  }
   // place sign at the far side of the pad, facing the island centre
   const toCentre = Math.atan2(-x, -z)
   sign.position.set(Math.sin(toCentre + Math.PI) * (radius - 0.6), 0, Math.cos(toCentre + Math.PI) * (radius - 0.6))
@@ -437,10 +534,14 @@ function buildZone(scene, physics, zone, animated) {
   sign.add(gem)
 
   let inside = 0
+  let neon = 0
+  const white = new THREE.Color('#ffffff')
   animated.push((t) => {
     gem.rotation.y = t * 1.2
     gem.position.y = 4.9 + Math.sin(t * 2 + x) * 0.2
     ringMat.opacity = 0.35 + inside * 0.6 + Math.sin(t * 3) * 0.08 * inside
+    // subtle neon flicker
+    if (neon > 0) neonMat.emissiveIntensity = neon * (3.2 + Math.sin(t * 7 + x) * 0.2 + (Math.random() < 0.004 ? -3 : 0))
   })
 
   return {
@@ -449,6 +550,13 @@ function buildZone(scene, physics, zone, animated) {
     radius,
     setActive(v) {
       inside = v ? 1 : 0
+    },
+    setNeon(amount) {
+      neon = amount
+      neonMat.emissiveIntensity = amount * 3.2
+      gem.material.emissiveIntensity = 0.35 + amount * 3
+      // ring turns from soft white into the zone's neon colour (values above 1 bloom)
+      ringMat.color.copy(white).lerp(color.clone().multiplyScalar(2.2), amount)
     },
   }
 }

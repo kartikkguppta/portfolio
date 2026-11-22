@@ -16,18 +16,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
     <script>
-      // Pick the theme before anything paints: saved choice, else the device setting
+      // Pick the theme before anything paints: the visitor's saved choice, else Sunset (neon) for everyone
       try {
-        var saved = localStorage.getItem('theme')
-        var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
-        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        var saved = localStorage.getItem('theme-v2')
+        document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' || saved === 'neon' ? saved : 'neon'
       } catch (e) {
-        document.documentElement.dataset.theme = 'light'
+        document.documentElement.dataset.theme = 'neon'
       }
     </script>
   </head>
   <body>
     <canvas id="scene"></canvas>
+    <div id="sunset-haze" aria-hidden="true"></div>
 
     <!-- Intro / loading -->
     <div id="intro" class="overlay">
@@ -42,6 +42,7 @@
           <span><kbd>Shift</kbd> boost</span>
           <span><kbd>Space</kbd> brake</span>
           <span><kbd>R</kbd> reset car</span>
+          <span><kbd>M</kbd> music</span>
         </div>
         <button id="intro-resume" class="link-btn">Prefer a classic résumé? View it here</button>
       </div>
@@ -51,6 +52,7 @@
     <div id="hud" class="hidden">
       <div class="hud-name"><strong id="hud-name"></strong><span id="hud-title"></span></div>
       <div class="hud-actions">
+        <button id="music-btn" class="btn small icon" title="Music on / off (M)" aria-label="Turn music on or off">🎵</button>
         <button class="btn small icon" data-theme-toggle title="Switch light / dark" aria-label="Switch light or dark theme"></button>
         <button id="resume-btn" class="btn small">Résumé</button>
         <button id="reset-btn" class="btn small" title="Reset car (R)">↺</button>
