@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Portfolio</title>
+    <meta name="description" content="An interactive 3D portfolio — drive around to explore." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <script>
+      // Pick the theme before anything paints: saved choice, else the device setting
+      try {
+        var saved = localStorage.getItem('theme')
+        var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light'
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <!-- Intro / loading -->
+    <div id="intro" class="overlay">
+      <div class="intro-card">
+        <button class="btn icon theme-toggle" data-theme-toggle title="Switch light / dark" aria-label="Switch light or dark theme"></button>
+        <h1 id="intro-name"></h1>
+        <p id="intro-title" class="muted"></p>
+        <p id="intro-status">Loading…</p>
+        <button id="start-btn" class="btn primary" disabled>Start driving</button>
+        <div class="keys">
+          <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows drive</span>
+          <span><kbd>Shift</kbd> boost</span>
+          <span><kbd>Space</kbd> brake</span>
+          <span><kbd>R</kbd> reset car</span>
+        </div>
+        <button id="intro-resume" class="link-btn">Prefer a classic résumé? View it here</button>
+      </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-name"><strong id="hud-name"></strong><span id="hud-title"></span></div>
+      <div class="hud-actions">
+        <button class="btn small icon" data-theme-toggle title="Switch light / dark" aria-label="Switch light or dark theme"></button>
+        <button id="resume-btn" class="btn small">Résumé</button>
+        <button id="reset-btn" class="btn small" title="Reset car (R)">↺</button>
+      </div>
+      <div id="zone-hint" class="zone-hint"></div>
+    </div>
+
+    <!-- Zone panel -->
+    <aside id="panel" class="panel" aria-live="polite">
+      <button class="panel-close" aria-label="Close">×</button>
+      <div class="panel-body"></div>
+    </aside>
+
+    <!-- Full résumé view -->
+    <div id="resume" class="overlay hidden">
+      <div class="resume-card">
+        <button class="panel-close" aria-label="Close">×</button>
+        <div class="resume-body"></div>
+      </div>
+    </div>
+
+    <!-- Touch controls -->
+    <div id="touch" class="hidden">
+      <div class="touch-left">
+        <button data-key="left">◀</button>
+        <button data-key="right">▶</button>
+      </div>
+      <div class="touch-right">
+        <button data-key="boost" class="small">⚡</button>
+        <button data-key="back">▼</button>
+        <button data-key="forward">▲</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
